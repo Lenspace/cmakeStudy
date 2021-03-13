@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.20)
+cmake_minimum_required (VERSION 3.10)
 SET(CMAKE_CXX_COMPILER "/usr/bin/g++")
 
 # 项目信息
