@@ -19,6 +19,9 @@ int main()
     Value& s = d["stars"];
     s.SetInt(s.GetInt() + 1);
 
+    Value& pro = d["project"];
+    cout << pro.GetString() << endl;
+    
     StringBuffer buffer;
     Writer<StringBuffer> writer(buffer);
     d.Accept(writer);
