@@ -7,14 +7,13 @@ set(Demo_VERSION_MAJOR 0)
 set(Demo_VERSION_MINOR 1)
 
 
-#set(CMAKE_EXE_LINKER_FLAGS "-pthread")
 # 项目信息
 project(Demo1 LANGUAGES CXX)
 
 # 增加编译选项
-#add_compile_options(-pthread)
+#add_compile_options(-pthread) # 这个仅增加编译期间，链接期间会出现问题
 set(CMAKE_CXX_FLAGS "-pthread ${CMAKE_CXX_FLAGS}")
-message(STATUS "option: -pthread")
+message(STATUS "option: -pthread")  # 提示信息
 
 # 查找当前目录下所有源文件
 # 并将名称保存到 DIR_SRCS 变量
