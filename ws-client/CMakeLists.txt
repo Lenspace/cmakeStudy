@@ -7,11 +7,14 @@ set(Demo_VERSION_MAJOR 0)
 set(Demo_VERSION_MINOR 1)
 
 # 项目信息
-project(Demo1 LANGUAGES CXX)
+project(wsClient LANGUAGES CXX)
 
 # 增加编译选项
 #add_compile_options(-pthread) # 这个仅增加编译期间，链接期间会出现问题
 set(CMAKE_CXX_FLAGS "-pthread -DASIO_STANDALONE ${CMAKE_CXX_FLAGS}")
+# 显示编译过程
+set(CMAKE_VERBOSE_MAKEFILE on)
+
 message(STATUS "option: -pthread")  # 提示信息
 
 # 查找当前目录下所有源文件
@@ -22,4 +25,4 @@ aux_source_directory(. DIR_SRCS)
 include_directories("${PROJECT_SOURCE_DIR}/../include")
 
 # 指定生成目标
-add_executable(echoServer ${DIR_SRCS})
+add_executable(echoClient ${DIR_SRCS})
