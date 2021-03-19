@@ -1,5 +1,9 @@
+//#define ASIO_STANDALONE
+//#define ASIO_SSL_DETAIL_IMPL_OPENSSL_INIT_IPP
+
 #include <websocketpp/config/asio_no_tls_client.hpp>
 #include <websocketpp/client.hpp>
+#include "asio/ssl/impl/src.hpp"
 
 #include <iostream>
 #include <chrono>
@@ -108,6 +112,7 @@ void on_open(client* c, websocketpp::connection_hdl hdl) {
 //服务器远程断开连接，回调此函数
 void on_close(client* c, websocketpp::connection_hdl hdl)
 {
+    std::cout << "on_close  " << hdl.lock().get() << std::endl;
     bIsConnectedServer = false;
     closeConnect();
 }
