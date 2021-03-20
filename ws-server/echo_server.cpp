@@ -58,6 +58,8 @@ int main() {
         // Start the server accept loop
         echo_server.start_accept();
 
+        echo_server.set_connect
+
         // Start the ASIO io_service run loop
         echo_server.run();
     } catch (websocketpp::exception const & e) {

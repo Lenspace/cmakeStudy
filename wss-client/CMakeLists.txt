@@ -12,11 +12,11 @@ project(wsClient LANGUAGES CXX)
 # 增加编译选项
 #add_compile_options(-pthread) # 这个仅增加编译期间，链接期间会出现问题
 # DASIO_SEPARATE_COMPILATION
-set(CMAKE_CXX_FLAGS "-pthread -DASIO_STANDALONE -lssl -lcrypto ${CMAKE_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "-pthread -DASIO_STANDALONE ${CMAKE_CXX_FLAGS}")
 # 显示编译过程
 set(CMAKE_VERBOSE_MAKEFILE on)
 
-message(STATUS "option: -pthread")  # 提示信息
+message(STATUS "wss-client build")  # 提示信息
 
 include_directories("/usr/include/openssl")
 link_directories("/usr/lib/x86_64-linux-gnu")
