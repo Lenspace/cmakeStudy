@@ -29,79 +29,134 @@
 #include <websocketpp/client.hpp>
 
 #include <iostream>
+#include <time.h>
+#include "rapidjson/writer.h"
+#include "rapidjson/stringbuffer.h"
+#include <zlib.h>
 
 typedef websocketpp::client<websocketpp::config::asio_tls_client> client;
 typedef websocketpp::lib::shared_ptr<websocketpp::lib::asio::ssl::context> context_ptr;
 
+using websocketpp::lib::bind;
 using websocketpp::lib::placeholders::_1;
 using websocketpp::lib::placeholders::_2;
-using websocketpp::lib::bind;
 
-void on_message(websocketpp::connection_hdl, client::message_ptr msg) {
+int gzDecompress(const char *src, int srcLen, const char *dst, int dstLen)
+		{
+					z_stream strm;
+							strm.zalloc = NULL;
+									strm.zfree = NULL;
+											strm.opaque = NULL;
+
+													strm.avail_in = srcLen;
+															strm.avail_out = dstLen;
+																	strm.next_in = (Bytef *)src;
+																			strm.next_out = (Bytef *)dst;
+
+																					int err = -1, ret = -1;
+																							err = inflateInit2(&strm, MAX_WBITS + 16);
+																									if (err == Z_OK)
+																												{
+																																err = inflate(&strm, Z_FINISH);
+																																			if (err == Z_STREAM_END)
+																																							{
+																																												ret = strm.total_out;
+																																															}
+																																						else
+																																										{
+																																															inflateEnd(&strm);
+																																																			return err;
+																																																						}
+																																								}
+																											else
+																														{
+																																		inflateEnd(&strm);
+																																					return err;
+																																							}
+																													inflateEnd(&strm);
+																															return err;
+																																}
+
+void on_message(websocketpp::connection_hdl, client::message_ptr msg)
+{
     std::cout << "server << " << msg->get_payload() << std::endl;
+    char szOut[1024] = {0};
+    std::string strSrc = msg->get_payload();
+    gzDecompress(strSrc.c_str(), strSrc.size(), szOut, 1024);
+    std::cout << "DeCompress is " << szOut << std::endl;
 }
 
 /// Verify that one of the subject alternative names matches the given hostname
-bool verify_subject_alternative_name(const char * hostname, X509 * cert) {
-    STACK_OF(GENERAL_NAME) * san_names = NULL;
-    
-    san_names = (STACK_OF(GENERAL_NAME) *) X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL);
-    if (san_names == NULL) {
+bool verify_subject_alternative_name(const char *hostname, X509 *cert)
+{
+    STACK_OF(GENERAL_NAME) *san_names = NULL;
+
+    san_names = (STACK_OF(GENERAL_NAME) *)X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL);
+    if (san_names == NULL)
+    {
         return false;
     }
-    
+
     int san_names_count = sk_GENERAL_NAME_num(san_names);
-    
+
     bool result = false;
-    
-    for (int i = 0; i < san_names_count; i++) {
-        const GENERAL_NAME * current_name = sk_GENERAL_NAME_value(san_names, i);
-        
-        if (current_name->type != GEN_DNS) {
+
+    for (int i = 0; i < san_names_count; i++)
+    {
+        const GENERAL_NAME *current_name = sk_GENERAL_NAME_value(san_names, i);
+
+        if (current_name->type != GEN_DNS)
+        {
             continue;
         }
-        
-        char const * dns_name = (char const *) ASN1_STRING_get0_data(current_name->d.dNSName);
-        
+
+        char const *dns_name = (char const *)ASN1_STRING_get0_data(current_name->d.dNSName);
+
         // Make sure there isn't an embedded NUL character in the DNS name
-        if (ASN1_STRING_length(current_name->d.dNSName) != strlen(dns_name)) {
+        if (ASN1_STRING_length(current_name->d.dNSName) != strlen(dns_name))
+        {
             break;
         }
         // Compare expected hostname with the CN
         result = (strcasecmp(hostname, dns_name) == 0);
     }
     sk_GENERAL_NAME_pop_free(san_names, GENERAL_NAME_free);
-    
+
     return result;
 }
 
 /// Verify that the certificate common name matches the given hostname
-bool verify_common_name(char const * hostname, X509 * cert) {
+bool verify_common_name(char const *hostname, X509 *cert)
+{
     // Find the position of the CN field in the Subject field of the certificate
     int common_name_loc = X509_NAME_get_index_by_NID(X509_get_subject_name(cert), NID_commonName, -1);
-    if (common_name_loc < 0) {
+    if (common_name_loc < 0)
+    {
         return false;
     }
-    
+
     // Extract the CN field
-    X509_NAME_ENTRY * common_name_entry = X509_NAME_get_entry(X509_get_subject_name(cert), common_name_loc);
-    if (common_name_entry == NULL) {
+    X509_NAME_ENTRY *common_name_entry = X509_NAME_get_entry(X509_get_subject_name(cert), common_name_loc);
+    if (common_name_entry == NULL)
+    {
         return false;
     }
-    
+
     // Convert the CN field to a C string
-    ASN1_STRING * common_name_asn1 = X509_NAME_ENTRY_get_data(common_name_entry);
-    if (common_name_asn1 == NULL) {
+    ASN1_STRING *common_name_asn1 = X509_NAME_ENTRY_get_data(common_name_entry);
+    if (common_name_asn1 == NULL)
+    {
         return false;
     }
-    
-    char const * common_name_str = (char const *) ASN1_STRING_get0_data(common_name_asn1);
-    
+
+    char const *common_name_str = (char const *)ASN1_STRING_get0_data(common_name_asn1);
+
     // Make sure there isn't an embedded NUL character in the CN
-    if (ASN1_STRING_length(common_name_asn1) != strlen(common_name_str)) {
+    if (ASN1_STRING_length(common_name_asn1) != strlen(common_name_str))
+    {
         return false;
     }
-    
+
     // Compare expected hostname with the CN
     return (strcasecmp(hostname, common_name_str) == 0);
 }
@@ -177,30 +232,32 @@ bool verify_certificate(const char * hostname, bool preverified, boost::asio::ss
  * something equivilent to spoof one of the names on that cert 
  * (websocketpp.org, for example).
  */
-context_ptr on_tls_init(const char * hostname, websocketpp::connection_hdl) {
-    
+context_ptr on_tls_init(const char *hostname, websocketpp::connection_hdl)
+{
+
     context_ptr ctx = websocketpp::lib::make_shared<websocketpp::lib::asio::ssl::context>(websocketpp::lib::asio::ssl::context::sslv23);
 
-    try {
+    try
+    {
         ctx->set_options(websocketpp::lib::asio::ssl::context::default_workarounds |
                          websocketpp::lib::asio::ssl::context::no_sslv2 |
                          websocketpp::lib::asio::ssl::context::no_sslv3 |
                          websocketpp::lib::asio::ssl::context::single_dh_use);
 
-
-        
         ctx->set_verify_mode(websocketpp::lib::asio::ssl::verify_none);
         //ctx->set_verify_callback(bind(&verify_certificate, hostname, ::_1, ::_2));
 
         // Here we load the CA certificates of all CA's that this client trusts.
         //ctx->load_verify_file("ca-chain.cert.pem");
-    } catch (std::exception& e) {
+    }
+    catch (std::exception &e)
+    {
         std::cout << e.what() << std::endl;
     }
     return ctx;
 }
 bool bIsConnectedServer = false;
-//连接上服务器，回调此函数
+
 void on_open(client *c, websocketpp::connection_hdl hdl)
 {
     std::cout << "open handler connect to Server success." << std::endl;
@@ -216,24 +273,29 @@ void on_open(client *c, websocketpp::connection_hdl hdl)
     }
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[])
+{
     client c;
 
     std::string hostname = "localhost";
     std::string port = "9002";
 
-    if (argc == 3) {
+    if (argc == 3)
+    {
         hostname = argv[1];
         port = argv[2];
-    } else {
+    }
+    else
+    {
         std::cout << "Usage: print_server_tls <hostname> <port>" << std::endl;
         return 1;
     }
-    
-    std::string uri = "wss://" + hostname + ":" + port;
-    uri = "wss://echo.websocket.org";
 
-    try {
+    std::string uri = "wss://" + hostname + ":" + port;
+    uri = "wss://api-aws.huobi.pro/ws";
+
+    try
+    {
         // Set logging to be pretty verbose (everything except message payloads)
         c.set_access_channels(websocketpp::log::alevel::all);
         c.clear_access_channels(websocketpp::log::alevel::frame_payload);
@@ -249,7 +311,8 @@ int main(int argc, char* argv[]) {
 
         websocketpp::lib::error_code ec;
         client::connection_ptr con = c.get_connection(uri, ec);
-        if (ec) {
+        if (ec)
+        {
             std::cout << "could not create connection because: " << ec.message() << std::endl;
             return 0;
         }
@@ -260,16 +323,33 @@ int main(int argc, char* argv[]) {
 
         c.get_alog().write(websocketpp::log::alevel::app, "Connecting to " + uri);
 
-        int nWhileTimes = 23;
-        while (nWhileTimes-- > 0)
+        int nWhileTimes = 0;
+        bool bFlag = true;
+        while (nWhileTimes < 100)
         {
-            if (bIsConnectedServer && nWhileTimes%5==0)
+		nWhileTimes++;
+            if (bIsConnectedServer && bFlag)
             {
+                bFlag = false;
                 std::cout << "send txt aaaaa >>" << std::endl;
-                con->send("Hello I am WSS Client");//文本数据
+                // createJsonBody
+                rapidjson::StringBuffer buffer;
+                rapidjson::Writer<rapidjson::StringBuffer> myWriter(buffer);
+                myWriter.StartObject();
+
+                myWriter.Key("sub");
+                myWriter.String("market.zksusdt.bbo");
+
+                myWriter.Key("id");
+                myWriter.String("idtest1");
+
+                myWriter.EndObject();
+
+                std::cout << buffer.GetString() << std::endl;
+                con->send(buffer.GetString());
                 //int nRet = sendTextData("aaaaa");
                 std::cout << "send txt aaaaa end." << std::endl;
-                //con->send("bbbbb", 5, websocketpp::frame::opcode::binary);//字节流
+                //con->send("bbbbb", 5, websocketpp::frame::opcode::binary);
             }
 
             c.run_one();
@@ -286,8 +366,9 @@ int main(int argc, char* argv[]) {
         websocketpp::close::status::value cvValue = 0;
         std::string strReason = "";
         c.close(con->get_handle(), cvValue, strReason);
-
-    } catch (websocketpp::exception const & e) {
+    }
+    catch (websocketpp::exception const &e)
+    {
         std::cout << e.what() << std::endl;
     }
     c.stop();
